@@ -5,6 +5,10 @@
 {% endblock %}
 
 {% block body %}
+    <form action="{% url 'editPage' %}" method="GET">
+        <input type="hidden" name="title" value={{ title }}>
+        <button type="Submit" style="margin-left:60%">Edit</button>
+    </form>
     {{ entry|safe }}
 
 {% endblock %}

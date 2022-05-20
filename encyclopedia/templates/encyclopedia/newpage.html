@@ -5,15 +5,16 @@
 {% endblock %}
 
 {% block body %}
-
     <form action="_newpage" method="POST">
         {% csrf_token %}
         {{ newPageForm.newEntry.label_tag}} {{ newPageForm.newEntry}}
-         <button type="Submit">Submit</button><br>
+        <button type="Submit" name="previewbtn" value="Preview">Preview</button>
+        <button type="Submit" name="savebtn" value="Save">Save</button><br>
         {{ newPageForm.newEntryText.label_tag}}<br>
         {{ newPageForm.newEntryText}}<br>
-
     </form>
-
-
+    <fieldset style="border:3px; border-style:solid; border-color:#66AAFF; width:80%; padding: 1em;">
+        <legend style="width:90px;" ><div style="text-align:center;">preview</div>  </legend>
+        {{ preview|safe }}
+    </fieldset>
 {% endblock %}
