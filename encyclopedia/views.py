@@ -10,6 +10,7 @@ from .util import get_entry, list_entries, save_entry
 
 
 def show_entry(request, title, entry=None):
+    # common function to display wiki page
     if not entry:
         entry = get_entry(title)
     return render(request, "encyclopedia/display.html", {
@@ -17,6 +18,7 @@ def show_entry(request, title, entry=None):
 
 
 def show_list(request, entries_list, header):
+    # common function to display lists of entries
     return render(request, "encyclopedia/index.html", {
         "entries": entries_list, "header": header
     })
@@ -101,6 +103,7 @@ def edit(request):
 
 
 def newPage(request):
+    # called when incoming url is "/_newpage"
     if request.method == "POST":
         # form submitted by user
         form = NewPageForm(request.POST)
@@ -115,7 +118,7 @@ def newPage(request):
                 # store the page
                 save_entry(EntrySubtd, content)
                 return HttpResponseRedirect(reverse('index', args=[EntrySubtd]))
-                # alternate solution return show_entry(request, newEntrySubtd, content)
+
             else:   # 'previewbtn' in request.POST or others
                 # set label (it seems the only one missed)
                 form['newEntryText'].label = "Please, edit the page content here or save it"
@@ -136,5 +139,5 @@ def newPage(request):
 
 
 def random(request):
-    print(request.path_info)
+    # called when incoming url is "/_random"
     return HttpResponseRedirect(reverse('index', args=[choice(list_entries())]))
