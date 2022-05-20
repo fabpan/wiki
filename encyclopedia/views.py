@@ -1,11 +1,12 @@
 from django.shortcuts import render
-from .util import get_entry, list_entries
 from markdown2 import markdown
-from django import forms
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.http import HttpResponseRedirect
+from django.urls import reverse
 from random import choice
+from .forms import NewPageForm, EditPageForm
+from .util import get_entry, list_entries, save_entry
 
 
 def show_entry(request, title, entry=None):
@@ -16,7 +17,6 @@ def show_entry(request, title, entry=None):
 
 
 def show_list(request, entries_list, header):
-    print("SHOW LIST 01")
     return render(request, "encyclopedia/index.html", {
         "entries": entries_list, "header": header
     })
@@ -27,11 +27,9 @@ def index(request, title=None):
     # where title is a string different from "_newpage" and "_search"
     if not title:
         # incoming url is "/wiki/"
-        print("w/o title")
         return show_list(request, entries_list=list_entries(), header="All Pages")
     else:
         # user asks for a page by its title
-        print("w title", title)
         entry = get_entry(title)
         if entry:
             # asked page exists and its content is shown
@@ -50,7 +48,7 @@ def search(request):
         # not empty target url incoming /_search/?q=... not empty
         if q.upper() in [entry.upper() for entry in entries]:
             # found full match entry , show page of the entry
-            return show_entry(request, title=q)
+            return HttpResponseRedirect(reverse('index', args=[q]))
         else:
             # look for partial matching entries/y
             entries_list = [s for s in entries if q.upper() in s.upper()]
@@ -69,58 +67,74 @@ def search(request):
         return show_list(request, entries_list, header)
 
 
-class NewPageForm(forms.Form):
-        newEntry = forms.CharField()
-        newEntryText = forms.CharField(widget=forms.Textarea(attrs={"style":"height:40vh"}))
-
-
-def update(request, title=None):
+def edit(request):
+    # called when incoming url is "/_edit", usually followed by ..?title='value' (key named "title" end its string value)
     if request.method == "POST":
-        # replay of the user to the form
-        form = NewPageForm(request.POST)
+        # form submitted by user
+        form = EditPageForm(request.POST)
         if form.is_valid():
-            newEntrySubtd = form.cleaned_data['newEntry']
-            newEntryTextSubtd = form.cleaned_data['newEntryText']
-
-            content = "# " + newEntrySubtd + "\n" + newEntryTextSubtd
-
+            EntrySubtd = form.cleaned_data['newEntry']
+            EntryTextSubtd = form.cleaned_data['newEntryText']
+            # compose content of the page
+            content = "# " + EntrySubtd + "\n" + EntryTextSubtd
+            # check which button has been submitted
             if 'savebtn' in request.POST:
-                default_storage.save('./entries/' + newEntrySubtd + '.md', ContentFile(content))
-                return show_entry(request, newEntrySubtd, content)
+                save_entry(EntrySubtd, content)
+                return HttpResponseRedirect(reverse('index', args=[EntrySubtd]))
+                # alternate solution return show_entry(request, newEntrySubtd, content)
             elif 'previewbtn' in request.POST:
-                PageForm = NewPageForm(initial={"newEntry": newEntrySubtd, "newEntryText": newEntryTextSubtd})
+                PageForm = EditPageForm(initial={"newEntry": EntrySubtd, "newEntryText": EntryTextSubtd})
                 PageForm['newEntry'].label = "Title"
-                PageForm['newEntryText'].label = "Please, edit the page content here"
+                PageForm['newEntryText'].label = "Please, edit the page content here or save it"
                 return render(request, "encyclopedia/newpage.html",
-                              {"newPageForm": PageForm,
-                               "preview": markdown(content)})
-
+                              {"PageForm": PageForm,
+                                  "preview": markdown(content)})
     # send the form
-    PageForm = NewPageForm()
-    PageForm['newEntry'].label = "Title"
-    if title:
-        title = request.GET.get("title")
-        entry = get_entry(title)
-        content=entry.split('\n', 2)[-1]
-        preview=markdown(entry)
-        PageForm = NewPageForm(initial={"newEntry":title, "newEntryText": content})
-        PageForm['newEntryText'].label = "Please, edit the page content here"
-    else:
-        PageForm['newEntryText'].label = "Please, enter the page content here"
-        preview=""
+    title = request.GET.get("title")
+    entry = get_entry(title)
+    content = entry.split('\n', 2)[-1]
+    preview = markdown(entry)
+    PageForm = EditPageForm(initial={"newEntry": title, "newEntryText": content})
+    PageForm['newEntryText'].label = "Please, edit the page content here"
 
-    return render(request, "encyclopedia/newpage.html", {"newPageForm": PageForm, "preview": preview})
+    return render(request, "encyclopedia/newpage.html", {"PageForm": PageForm, "preview": preview})
 
 
 def newPage(request):
-    return update(request)
+    if request.method == "POST":
+        # form submitted by user
+        form = NewPageForm(request.POST)
+        if form.is_valid():
+            # extract submitted data
+            EntrySubtd = form.cleaned_data['newEntry']
+            EntryTextSubtd = form.cleaned_data['newEntryText']
+            # compose content of the page
+            content = "# " + EntrySubtd + "\n" + EntryTextSubtd
+            # check which button has been submitted
+            if 'savebtn' in request.POST:
+                # store the page
+                save_entry(EntrySubtd, content)
+                return HttpResponseRedirect(reverse('index', args=[EntrySubtd]))
+                # alternate solution return show_entry(request, newEntrySubtd, content)
+            else:   # 'previewbtn' in request.POST or others
+                # set label (it seems the only one missed)
+                form['newEntryText'].label = "Please, edit the page content here or save it"
+                return render(request, "encyclopedia/newpage.html",
+                              {"PageForm": form,
+                               "preview": markdown(content)})
+        else:
+            # form submitted not valid, show the error message (included in the form) to the user
+            return render(request, "encyclopedia/newpage.html",
+                              {"PageForm": form,
+                               "preview": ''})
+    # build the form end return it to the user
+    PageForm = NewPageForm()
+    # PageForm['newEntry'].label = "Title"
+    PageForm['newEntryText'].label = "Please, enter the page content here"
+    preview = ""
+    return render(request, "encyclopedia/newpage.html", {"PageForm": PageForm, "preview": preview})
 
-
-def edit(request):
-    # send the form
-    title = request.GET.get("title")
-    return update(request, title)
 
 def random(request):
-
-    return HttpResponseRedirect("/wiki/"+choice(list_entries()))
+    print(request.path_info)
+    return HttpResponseRedirect(reverse('index', args=[choice(list_entries())]))
