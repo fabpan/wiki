@@ -1,7 +1,5 @@
 from django.shortcuts import render
 from markdown2 import markdown
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from random import choice
@@ -9,12 +7,10 @@ from .forms import NewPageForm, EditPageForm
 from .util import get_entry, list_entries, save_entry
 
 
-def show_entry(request, title, entry=None):
+def show_entry(request, title, entry, edit=True, status=200):
     # common function to display wiki page
-    if not entry:
-        entry = get_entry(title)
     return render(request, "encyclopedia/display.html", {
-        "entry": markdown(entry), 'title': title})
+        "entry": markdown(entry), 'title': title, "edit": edit}, status=status)
 
 
 def show_list(request, entries_list, header):
@@ -26,7 +22,7 @@ def show_list(request, entries_list, header):
 
 def index(request, title=None):
     # called when incoming url is ".../wiki/" or ".../wiki/title",
-    # where title is a string different from "_newpage" and "_search"
+    # where title is a string different from "_newpage", "_random", "_edit" and "_search"
     if not title:
         # incoming url is "/wiki/"
         return show_list(request, entries_list=list_entries(), header="All Pages")
@@ -35,10 +31,12 @@ def index(request, title=None):
         entry = get_entry(title)
         if entry:
             # asked page exists and its content is shown
-            return show_entry(request, title, entry)
+            return render(request, "encyclopedia/display.html", {
+                "entry": markdown(entry), 'title': title})
         else:
             # asked page does not exist
-            return show_entry(request, title="Page not found", entry=" ")
+            # urls dispatcher should have intercepted this request,  this branch is kept as a further precaution
+            return handler404(request, title)
 
 
 def search(request):
@@ -82,8 +80,9 @@ def edit(request):
             # check which button has been submitted
             if 'savebtn' in request.POST:
                 save_entry(EntrySubtd, content)
+                # show the entry saved
                 return HttpResponseRedirect(reverse('index', args=[EntrySubtd]))
-                # alternate solution return show_entry(request, newEntrySubtd, content)
+
             elif 'previewbtn' in request.POST:
                 PageForm = EditPageForm(initial={"newEntry": EntrySubtd, "newEntryText": EntryTextSubtd})
                 PageForm['newEntry'].label = "Title"
@@ -126,10 +125,10 @@ def newPage(request):
                               {"PageForm": form,
                                "preview": markdown(content)})
         else:
-            # form submitted not valid, show the error message (included in the form) to the user
+            # form submitted not valid, show the error message (included in form) to the user
+            # validation in forms.py include check if the entry already exists
             return render(request, "encyclopedia/newpage.html",
-                              {"PageForm": form,
-                               "preview": ''})
+                          {"PageForm": form, "preview": ''})
     # build the form end return it to the user
     PageForm = NewPageForm()
     # PageForm['newEntry'].label = "Title"
@@ -141,3 +140,6 @@ def newPage(request):
 def random(request):
     # called when incoming url is "/_random"
     return HttpResponseRedirect(reverse('index', args=[choice(list_entries())]))
+
+def handler404(request, title):
+    return render(request, "encyclopedia/404.html", {"title": title}, status=404)
