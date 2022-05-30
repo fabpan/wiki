@@ -6,7 +6,7 @@ class WikiEntryConverter:
 
     def to_python(self, title):
         # accept only existing entries
-        if title.upper() in [entry.upper() for entry in list_entries()]:
+        if title.lower() in [entry.lower() for entry in list_entries()]:
             return title
         else:
             raise ValueError

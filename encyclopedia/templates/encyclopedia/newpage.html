@@ -8,13 +8,16 @@
     <form  method="POST">
         {% csrf_token %}
         <font color="#ff0000">{{PageForm.non_field_errors|safe}}</font>
+
         {{ PageForm.newEntry.label_tag}} {{ PageForm.newEntry}}
-        <button type="Submit" name="previewbtn" value="Preview">Preview</button>
+
+        <button  type="Submit" name="previewbtn" value="Preview">Preview</button>
         <button type="Submit" name="savebtn" value="Save">Save</button><br>
+
         {{ PageForm.newEntryText.label_tag}}<br>
         {{ PageForm.newEntryText}}<br>
     </form>
-    <fieldset style="border:3px; border-style:solid; border-color:#66AAFF; width:80%; padding: 1em;">
+    <fieldset style="border:3px; border-style:solid; border-color:#66AAFF; width:80%; padding-left: 1em;">
         <legend style="width:90px;" ><div style="text-align:center;">preview</div>  </legend>
         {{ preview|safe }}
     </fieldset>

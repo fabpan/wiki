@@ -7,6 +7,10 @@ code {
     white-space: pre;
 }
 
+fieldset h1 {
+    padding-top: 0;
+}
+
 h1 {
     margin-top: 0px;
     padding-top: 20px;
@@ -36,3 +40,4 @@ textarea {
 .sidebar h2 {
     margin-top: 5px;
 }
+
